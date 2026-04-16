@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgentIncScan</title>
+  <link rel="icon" type="image/png" href="agentincscan.png">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#080507;--bg2:#0f0809;--bg3:#150b0b;
+      --border:#2a1515;--border2:#3d1f1f;
+      --green:#ff3333;--gdim:rgba(255,51,51,0.12);--gborder:rgba(255,51,51,0.22);
+      --text:#f0e8e8;--muted:#6a4a4a;--dim:#9a7070;
+      --red:#ff3333;--yellow:#ff8844;--blue:#ff6655;--teal:#ff4466;
+      --r:12px;
+    }
+
+    body{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:5.5rem 1rem 3rem;font-family:'Space Grotesk',sans-serif;color:var(--text);position:relative;overflow-x:hidden;}
+
+    /* ── FULL PAGE SCANNER ── */
+    .page-scanner{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+    .page-scanner-line{
+      position:absolute;left:0;right:0;height:2px;
+      background:linear-gradient(90deg, transparent 0%, rgba(255,51,51,0.0) 5%, rgba(255,51,51,0.9) 20%, rgba(255,51,51,1) 50%, rgba(255,51,51,0.9) 80%, rgba(255,51,51,0.0) 95%, transparent 100%);
+      box-shadow: 0 0 12px rgba(255,51,51,0.8), 0 0 30px rgba(255,51,51,0.4), 0 0 60px rgba(255,51,51,0.2);
+      animation: pagescan 4s ease-in-out infinite;
+    }
+    .page-scanner-beam{
+      position:absolute;left:0;right:0;height:120px;
+      background:linear-gradient(180deg, rgba(255,51,51,0.0) 0%, rgba(255,51,51,0.06) 50%, rgba(255,51,51,0.0) 100%);
+      animation: pagescan 4s ease-in-out infinite;
+      margin-top:-118px;
+    }
+    @keyframes pagescan{
+      0%   {top:-10px;}
+      50%  {top:100vh;}
+      50.1%{top:-10px;opacity:0;}
+      55%  {opacity:0;}
+      60%  {opacity:1;}
+      100% {top:100vh;}
+    }
+
+    .scan-dots{position:absolute;left:0;right:0;height:2px;animation: pagescan 4s ease-in-out infinite;}
+    .scan-dot{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px rgba(255,51,51,1), 0 0 20px rgba(255,51,51,0.6);}
+
+    .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,51,51,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,51,51,0.025) 1px,transparent 1px);background-size:48px 48px;}
+
+    /* Nav */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:52px;background:rgba(8,5,7,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+    .nav-l{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--text);letter-spacing:-0.3px;cursor:default;user-select:none;}
+    .nav-r{display:flex;align-items:center;gap:6px;}
+    .nav-a{font-size:12px;color:var(--muted);text-decoration:none;padding:5px 11px;border-radius:7px;transition:color .2s,background .2s;font-weight:500;}
+    .nav-a:hover{color:var(--text);background:var(--bg3);}
+
+    /* Page */
+    .page{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;max-width:780px;}
+
+    /* Hero */
+    .hero{text-align:center;margin-bottom:1.8rem;animation:fu .5s ease both;}
+    .logo-row{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:1.2rem;}
+    .eyebrow{display:inline-flex;align-items:center;gap:6px;background:var(--gdim);border:1px solid var(--gborder);color:var(--red);font-size:11px;font-weight:600;padding:4px 12px;border-radius:999px;margin-bottom:.9rem;letter-spacing:.5px;}
+    .dp{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 2s infinite;}
+    .hero p{font-size:12px;color:var(--muted);}
+
+    /* Scan card */
+    .scan-card{width:100%;background:rgba(15,8,9,0.85);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem;margin-bottom:1.2rem;animation:fu .5s .1s ease both;transition:border-color .2s;backdrop-filter:blur(8px);}
+    .scan-card:focus-within{border-color:var(--red);box-shadow:0 0 20px rgba(255,51,51,0.08);}
+    .slabel{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.8px;margin-bottom:.7rem;text-transform:uppercase;}
+    .irow{display:flex;gap:8px;}
+    .ri{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:'Space Mono',monospace;outline:none;transition:border-color .2s;}
+    .ri::placeholder{color:var(--muted);}
+    .ri:focus{border-color:var(--red);}
+    .sbtn{background:var(--red);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;border:none;border-radius:8px;padding:10px 22px;cursor:pointer;letter-spacing:.5px;transition:background .2s,transform .1s,box-shadow .2s;white-space:nowrap;flex-shrink:0;}
+    .sbtn:hover{background:#ff5555;box-shadow:0 0 20px rgba(255,51,51,0.5);}
+    .sbtn:active{transform:scale(.97);}
+    .sbtn:disabled{background:var(--bg3);color:var(--muted);cursor:not-allowed;transform:none;border:1px solid var(--border);box-shadow:none;}
+
+    /* Result */
+    .rbox{width:100%;background:rgba(15,8,9,0.9);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;display:none;margin-bottom:1.2rem;backdrop-filter:blur(8px);}
+    .rbox.vis{display:block;animation:fu .4s ease both;}
+    .rtop{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;gap:12px;}
+    .rlbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px;}
+    .rurl{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);word-break:break-all;line-height:1.5;}
+    .spill{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;padding:4px 14px;border-radius:999px;flex-shrink:0;white-space:nowrap;letter-spacing:.5px;}
+    .ss{background:rgba(255,51,51,.12);color:var(--red);border:1px solid rgba(255,51,51,.3);}
+    .sw{background:rgba(255,136,68,.10);color:var(--yellow);border:1px solid rgba(255,136,68,.25);}
+    .sd{background:rgba(200,20,20,.18);color:#ff2222;border:1px solid rgba(200,20,20,.35);}
+    .se{background:rgba(200,20,20,.18);color:#ff2222;border:1px solid rgba(200,20,20,.35);}
+    .rmeta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;}
+    .mt{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:11px;color:var(--dim);}
+    .pbar{width:100%;height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:.35rem;}
+    .pfill{height:100%;background:var(--red);border-radius:2px;width:0%;transition:width .35s ease;box-shadow:0 0 8px rgba(255,51,51,0.6);}
+    .sline{font-size:11px;color:var(--muted);min-height:15px;}
+
+    /* Score grid */
+    .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:1rem 0;}
+    .sblock{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:.9rem .5rem .7rem;text-align:center;}
+    .snum{font-size:1.6rem;font-weight:700;line-height:1;margin-bottom:3px;}
+    .snum.nc{color:#ff2222;}
+    .snum.nw{color:var(--yellow);}
+    .snum.ni{color:var(--blue);}
+    .snum.np{color:var(--red);}
+    .slim{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+
+    /* Sections */
+    .shdr{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-top:1px solid var(--border);margin-top:.8rem;margin-bottom:.6rem;flex-wrap:wrap;gap:6px;}
+    .sttl{font-size:12px;font-weight:600;color:var(--dim);}
+    .badges{display:flex;gap:5px;flex-wrap:wrap;}
+    .bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;}
+    .bc{background:rgba(200,20,20,.18);color:#ff3333;border:1px solid rgba(200,20,20,.3);}
+    .bw{background:rgba(255,136,68,.12);color:var(--yellow);border:1px solid rgba(255,136,68,.2);}
+    .bi{background:rgba(255,102,85,.10);color:var(--blue);border:1px solid rgba(255,102,85,.2);}
+    .bp{background:rgba(255,51,51,.10);color:var(--red);border:1px solid rgba(255,51,51,.2);}
+    .bt{background:rgba(255,68,102,.10);color:var(--teal);border:1px solid rgba(255,68,102,.2);}
+
+    /* File accordion */
+    .facc{background:var(--bg3);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;overflow:hidden;}
+    .fhdr{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none;transition:background .15s;}
+    .fhdr:hover{background:rgba(255,255,255,.02);}
+    .fname{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ftog{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+    .ftog.op{transform:rotate(90deg);}
+    .fbody{display:none;padding:0 12px 10px;}
+    .fbody.op{display:block;}
+
+    /* Findings */
+    .finding{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);margin-bottom:6px;}
+    .finding:last-child{margin-bottom:0;}
+    .fdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+    .dc{background:#ff2222;box-shadow:0 0 5px rgba(255,34,34,.5);}
+    .dw{background:var(--yellow);box-shadow:0 0 5px rgba(255,136,68,.3);}
+    .di{background:var(--blue);box-shadow:0 0 5px rgba(255,102,85,.3);}
+    .dp2{background:var(--red);box-shadow:0 0 5px rgba(255,51,51,.4);}
+    .ftitle{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
+    .fdesc{font-size:11px;color:var(--muted);line-height:1.65;}
+    .flvl{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;letter-spacing:.5px;}
+    .lc{background:rgba(200,20,20,.2);color:#ff3333;}
+    .lw{background:rgba(255,136,68,.15);color:var(--yellow);}
+    .li{background:rgba(255,102,85,.12);color:var(--blue);}
+    .csnip{background:#0d0607;border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:6px;font-family:'Space Mono',monospace;font-size:10px;color:#cc7766;line-height:1.7;overflow-x:auto;white-space:pre;}
+    .cline{color:var(--muted);font-size:9px;margin-right:8px;user-select:none;}
+    .summary{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-top:1rem;font-size:12px;color:var(--dim);line-height:1.75;}
+
+    /* Bottom */
+    .arow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:.9rem;animation:fu .5s .2s ease both;}
+    .abtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;border:1px solid var(--border);background:rgba(15,8,9,0.8);color:var(--dim);font-size:12px;font-family:'Space Grotesk',sans-serif;font-weight:500;padding:8px 16px;border-radius:8px;cursor:pointer;transition:border-color .2s,color .2s,background .2s;}
+    .abtn:hover{border-color:var(--border2);color:var(--text);background:var(--bg3);}
+    .abtnp{display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:var(--red);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;padding:8px 20px;border-radius:8px;cursor:pointer;transition:background .2s,transform .1s,box-shadow .2s;border:none;}
+    .abtnp:hover{background:#ff5555;transform:scale(1.03);box-shadow:0 0 20px rgba(255,51,51,0.45);}
+    .carow{display:flex;align-items:center;gap:8px;margin-bottom:1.8rem;flex-wrap:wrap;justify-content:center;animation:fu .5s .25s ease both;}
+    .calbl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.8px;}
+    .caval{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);word-break:break-all;text-align:center;}
+    .cacpy{background:var(--bg2);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,color .2s;flex-shrink:0;}
+    .cacpy:hover{border-color:var(--red);color:var(--red);}
+    .cacpy.cp{border-color:var(--red);color:var(--red);}
+    footer{font-size:11px;color:var(--muted);opacity:.45;text-align:center;animation:fu .5s .3s ease both;}
+
+    @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .ldots::after{content:'.';animation:dots 1.2s steps(3,end) infinite;}
+    @keyframes dots{0%{content:'.'}33%{content:'..'}66%,100%{content:'...'}}
+    @media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.nav-r{display:none;}}
+  </style>
+</head>
+<body>
+
+<div class="page-scanner">
+  <div class="page-scanner-beam"></div>
+  <div class="page-scanner-line"></div>
+  <div class="scan-dots">
+    <div class="scan-dot" style="left:8%"></div>
+    <div class="scan-dot" style="left:25%"></div>
+    <div class="scan-dot" style="left:50%"></div>
+    <div class="scan-dot" style="left:75%"></div>
+    <div class="scan-dot" style="left:92%"></div>
+  </div>
+</div>
+
+<div class="bg-grid"></div>
+
+<nav>
+  <div class="nav-l">
+    <svg width="30" height="30" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="border-radius:8px;display:block;flex-shrink:0;">
+      <defs>
+        <linearGradient id="nbg" x1="0" y1="0" x2="0.5" y2="1">
+          <stop offset="0%" stop-color="#cc0000"/>
+          <stop offset="55%" stop-color="#ff3333"/>
+          <stop offset="100%" stop-color="#ff9999"/>
+        </linearGradient>
+        <linearGradient id="nbeam" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff2222" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#ff2222" stop-opacity="0"/>
+        </linearGradient>
+        <clipPath id="nbox"><rect x="0" y="0" width="500" height="500" rx="70"/></clipPath>
+      </defs>
+      <style>
+        #nsl,#nsb{animation:nscan 2.2s ease-in-out infinite;}
+        @keyframes nscan{0%{transform:translateY(-220px);opacity:1;}45%{transform:translateY(220px);opacity:1;}50%{transform:translateY(220px);opacity:0;}55%{transform:translateY(-220px);opacity:0;}60%{transform:translateY(-220px);opacity:1;}100%{transform:translateY(220px);opacity:1;}}
+      </style>
+      <rect x="0" y="0" width="500" height="500" rx="70" fill="url(#nbg)"/>
+      <g clip-path="url(#nbox)">
+        <polygon points="118,390 162,390 235,215 191,215" fill="#0a0404"/>
+        <rect x="268" y="195" width="80" height="195" rx="5" fill="#0a0404"/>
+        <g id="nsb"><rect x="0" y="295" width="500" height="80" fill="url(#nbeam)"/></g>
+        <g id="nsl">
+          <rect x="0" y="371" width="500" height="5" rx="2" fill="#ff2222"/>
+          <rect x="0" y="370" width="500" height="7" rx="3" fill="#ff2222" opacity="0.35"/>
+          <circle cx="100" cy="374" r="7" fill="#ff2222"/>
+          <circle cx="250" cy="374" r="7" fill="#ff2222"/>
+          <circle cx="400" cy="374" r="7" fill="#ff2222"/>
+        </g>
+      </g>
+    </svg>
+    <span style="letter-spacing:-0.3px">AgentInc<span style="color:var(--red);">Scan</span></span>
+  </div>
+  <div class="nav-r">
+    <a class="nav-a" href="https://agentinc.fun" target="_blank">agentinc.fun</a>
+    <a class="nav-a" href="https://x.com/agentincdotfun" target="_blank">Follow on X</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <div class="logo-row">
+      <div style="width:90px;height:90px;flex-shrink:0;filter:drop-shadow(0 0 22px rgba(255,51,51,0.6));">
+        <svg width="90" height="90" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="border-radius:20px;display:block;">
+          <defs>
+            <linearGradient id="lbg" x1="0" y1="0" x2="0.5" y2="1">
+              <stop offset="0%" stop-color="#cc0000"/>
+              <stop offset="55%" stop-color="#ff3333"/>
+              <stop offset="100%" stop-color="#ff9999"/>
+            </linearGradient>
+            <linearGradient id="lbeam" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff2222" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#ff2222" stop-opacity="0"/>
+            </linearGradient>
+            <clipPath id="lbox"><rect x="0" y="0" width="500" height="500" rx="70"/></clipPath>
+          </defs>
+          <style>
+            #lsl,#lsb{animation:lscan 2.2s ease-in-out infinite;}
+            @keyframes lscan{0%{transform:translateY(-220px);opacity:1;}45%{transform:translateY(220px);opacity:1;}50%{transform:translateY(220px);opacity:0;}55%{transform:translateY(-220px);opacity:0;}60%{transform:translateY(-220px);opacity:1;}100%{transform:translateY(220px);opacity:1;}}
+          </style>
+          <rect x="0" y="0" width="500" height="500" rx="70" fill="url(#lbg)"/>
+          <g clip-path="url(#lbox)">
+            <polygon points="118,390 162,390 235,215 191,215" fill="#0a0404"/>
+            <rect x="268" y="195" width="80" height="195" rx="5" fill="#0a0404"/>
+            <g id="lsb"><rect x="0" y="295" width="500" height="80" fill="url(#lbeam)"/></g>
+            <g id="lsl">
+              <rect x="0" y="371" width="500" height="5" rx="2" fill="#ff2222"/>
+              <rect x="0" y="370" width="500" height="7" rx="3" fill="#ff2222" opacity="0.35"/>
+              <circle cx="100" cy="374" r="7" fill="#ff2222"/>
+              <circle cx="250" cy="374" r="7" fill="#ff2222"/>
+              <circle cx="400" cy="374" r="7" fill="#ff2222"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:2.6rem;font-weight:800;letter-spacing:-2px;color:#fff;line-height:1;">
+        agentinc<span style="color:var(--red);">scan</span><span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:10px;vertical-align:middle;letter-spacing:.5px;font-family:'Space Grotesk',sans-serif;">BETA</span>
+      </div>
+    </div>
+    <div class="eyebrow"><span class="dp"></span> BUILT ON AGENTINC</div>
+    <p>Scan repos. Find threats. Built on agentinc.</p>
+  </div>
+
+  <div class="scan-card">
+    <div class="slabel">GitHub Repository URL</div>
+    <div class="irow">
+      <input class="ri" id="repoInput" type="text" placeholder="https://github.com/org/repo" autocomplete="off"/>
+      <button class="sbtn" id="auditBtn" onclick="runAudit()">SCAN</button>
+    </div>
+  </div>
+
+  <div class="rbox" id="rbox">
+    <div class="rtop">
+      <div><div class="rlbl">Scanning</div><div class="rurl" id="rurl"></div></div>
+      <span class="spill" id="spill"></span>
+    </div>
+    <div class="rmeta" id="rmeta"></div>
+    <div class="pbar"><div class="pfill" id="pfill"></div></div>
+    <div class="sline" id="sline"></div>
+    <div id="rcont"></div>
+  </div>
+
+  <div class="arow">
+    <a class="abtn" href="https://x.com/i/communities/2035219204631404796" target="_blank">JOIN COMMUNITY</a>
+    <a class="abtn" href="https://bags.fm/EMWCtPaiyvnyHWTtCdxL7ADcES8jkJx3pVCnBLhfBAGS" target="_blank">🌐 AGENTINC.FUN</a>
+    <a class="abtnp" href="https://bags.fm/EMWCtPaiyvnyHWTtCdxL7ADcES8jkJx3pVCnBLhfBAGS/" target="_blank">🚀 BUY</a>
+  </div>
+  <div class="carow">
+    <span class="calbl">CA:</span>
+    <span class="caval">EMWCtPaiyvnyHWTtCdxL7ADcES8jkJx3pVCnBLhfBAGS</span>
+    <button class="cacpy" id="cpybtn" onclick="copyCA()" title="Copy CA">⎘</button>
+  </div>
+  <footer>© agentincscan 2026 · built on agentinc.fun</footer>
+</div>
+
+<script>
+const CA='EMWCtPaiyvnyHWTtCdxL7ADcES8jkJx3pVCnBLhfBAGS';
+let GH_TOKEN='';
+
+function copyCA(){
+  const btn=document.getElementById('cpybtn');
+  navigator.clipboard.writeText(CA).catch(()=>{const t=document.createElement('textarea');t.value=CA;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);});
+  btn.textContent='✓';btn.classList.add('cp');
+  setTimeout(()=>{btn.textContent='⎘';btn.classList.remove('cp');},2000);
+}
+
+async function gf(url){
+  const h={'Accept':'application/vnd.github.v3+json'};
+  if(GH_TOKEN)h['Authorization']='Bearer '+GH_TOKEN;
+  const r=await fetch(url,{headers:h});
+  if(r.status===404)throw new Error('404');
+  if(r.status===401)throw new Error('401');
+  if(r.status===403||r.status===429){const rem=r.headers.get('X-RateLimit-Remaining');throw new Error(rem==='0'?'RATE_LIMIT':'403');}
+  if(!r.ok)throw new Error('HTTP_'+r.status);
+  return r.json();
+}
+
+async function gfRaw(url){
+  const h={'Accept':'application/vnd.github.v3.raw'};
+  if(GH_TOKEN)h['Authorization']='Bearer '+GH_TOKEN;
+  try{const r=await fetch(url,{headers:h});if(!r.ok)return null;return r.text();}catch(e){return null;}
+}
+
+function parseURL(u){const c=u.replace(/\/$|https?:\/\/github\.com\//g,'');const p=c.split('/');return{owner:p[0],repo:p[1]};}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const SECRET_PATS=[
+  {r:/(?:api[_-]?key|apikey)\s*[=:]\s*['"`]([a-zA-Z0-9_\-]{20,})['"`]/gi,t:'API Key hardcoded',l:'CRITICAL'},
+  {r:/(?:secret|password|passwd|pwd)\s*[=:]\s*['"`]([^'"`\s]{8,})['"`]/gi,t:'Hardcoded password/secret',l:'CRITICAL'},
+  {r:/(?:private[_-]?key)\s*[=:]\s*['"`]([^'"`\s]{20,})['"`]/gi,t:'Private key hardcoded',l:'CRITICAL'},
+  {r:/(?:access[_-]?token|auth[_-]?token)\s*[=:]\s*['"`]([a-zA-Z0-9_\-]{20,})['"`]/gi,t:'Hardcoded access token',l:'CRITICAL'},
+  {r:/ghp_[a-zA-Z0-9]{36}/g,t:'GitHub PAT exposed in code',l:'CRITICAL'},
+  {r:/sk-[a-zA-Z0-9]{32,}/g,t:'OpenAI API Key exposed',l:'CRITICAL'},
+  {r:/AKIA[0-9A-Z]{16}/g,t:'AWS Access Key ID exposed',l:'CRITICAL'},
+  {r:/(?:database_url|db_url|mongo_uri|postgres_url|mysql_url)\s*[=:]\s*['"`][^'"`\s]{10,}['"`]/gi,t:'Database connection string hardcoded',l:'CRITICAL'},
+  {r:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g,t:'Private key block in source',l:'CRITICAL'},
+  {r:/(?:bearer\s+)([a-zA-Z0-9_\-\.]{30,})/gi,t:'Hardcoded Bearer token',l:'WARN'},
+  {r:/(?:webhook_url|discord_webhook)\s*[=:]\s*['"`](https?:\/\/[^'"`\s]+)['"`]/gi,t:'Hardcoded webhook URL',l:'WARN'},
+];
+
+const CODE_VULNS=[
+  {r:/eval\s*\(/g,t:'eval() usage — code injection risk',l:'WARN',d:'eval() executes arbitrary strings. Extremely dangerous if user input can reach it.'},
+  {r:/new\s+Function\s*\(/g,t:'new Function() — dynamic code execution',l:'WARN',d:'Creates functions from strings — similar risk to eval(). Avoid with user data.'},
+  {r:/document\.write\s*\(/g,t:'document.write() — XSS risk',l:'WARN',d:'document.write() can enable XSS if user input is passed in.'},
+  {r:/innerHTML\s*=(?!=)/g,t:'innerHTML assignment — XSS risk',l:'WARN',d:'Directly assigning to innerHTML with user content enables XSS.'},
+  {r:/dangerouslySetInnerHTML/g,t:'dangerouslySetInnerHTML (React XSS risk)',l:'WARN',d:'Ensure content is sanitized before using dangerouslySetInnerHTML.'},
+  {r:/http:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0)/g,t:'HTTP (non-HTTPS) URL',l:'WARN',d:'Unencrypted HTTP exposes data to MITM attacks.'},
+  {r:/(?:SELECT|INSERT|UPDATE|DELETE).*?\+\s*(?:req|input|user|param|body|query)/gi,t:'Potential SQL injection',l:'CRITICAL',d:'String-concatenated SQL detected. Use parameterized queries or an ORM.'},
+  {r:/exec\s*\(\s*(?:req|input|user|param|body)/gi,t:'Command injection risk',l:'CRITICAL',d:'User input passed to exec(). Allows arbitrary command execution.'},
+  {r:/child_process\.exec\s*\(/g,t:'child_process.exec() usage',l:'WARN',d:'Shell execution — ensure no user input reaches this call.'},
+  {r:/Math\.random\s*\(\)/g,t:'Math.random() not cryptographically secure',l:'INFO',d:'Use crypto.randomBytes() for security-sensitive randomness.'},
+  {r:/console\.(log|debug|info)\s*\([^)]*(?:password|token|secret|key)/gi,t:'Sensitive data logged to console',l:'WARN',d:'Passwords or tokens logged to console may appear in production logs.'},
+  {r:/TODO|FIXME|HACK|XXX/g,t:'TODO/FIXME/HACK comment',l:'INFO',d:'Unresolved comments may indicate incomplete security implementations.'},
+  {r:/verify\s*[=:]\s*false/gi,t:'SSL/TLS verification disabled',l:'CRITICAL',d:'Certificate verification is explicitly disabled — vulnerable to MITM.'},
+  {r:/(?:allow_all|cors\s*\(\s*\))/gi,t:'Overly permissive CORS',l:'WARN',d:'CORS appears to allow all origins — restrict in production.'},
+  {r:/process\.env\.[A-Z_]+\s*\|\|\s*['"`][^'"`]{8,}['"`]/g,t:'Fallback secret in env var',l:'WARN',d:'Hardcoded fallback for env var — may expose secrets if env is not set.'},
+];
+
+const RISKY_DEPS={
+  'event-stream':{l:'CRITICAL',d:'Malicious backdoor injected (2018 supply chain attack).'},
+  'flatmap-stream':{l:'CRITICAL',d:'Known malicious package — bitcoin wallet stealer.'},
+  'node-ipc':{l:'CRITICAL',d:'Contained deliberate sabotage code (protestware).'},
+  'colors':{l:'WARN',d:'Author sabotaged this package. Migrate to chalk or kleur.'},
+  'faker':{l:'WARN',d:'Protestware — author wiped contents. Use @faker-js/faker.'},
+  'request':{l:'WARN',d:'Deprecated since 2020 with unfixed vulns. Use got, axios, or native fetch.'},
+  'node-uuid':{l:'INFO',d:'Deprecated — use the uuid package instead.'},
+  'moment':{l:'INFO',d:'Maintenance-only. Consider date-fns or dayjs.'},
+  'lodash':{l:'INFO',d:'Prototype pollution in older versions — ensure latest.'},
+  'minimist':{l:'WARN',d:'Prototype pollution vulnerability in older versions.'},
+  'hoek':{l:'WARN',d:'Prototype pollution — update to @hapi/hoek.'},
+  'handlebars':{l:'WARN',d:'Prototype pollution in older versions.'},
+  'serialize-javascript':{l:'WARN',d:'XSS vulnerability in older versions.'},
+  'vm2':{l:'CRITICAL',d:'Multiple sandbox escapes — abandoned. Use isolated-vm instead.'},
+  'xmldom':{l:'WARN',d:'Multiple CVEs for malformed XML parsing.'},
+  'marked':{l:'INFO',d:'Older versions had XSS issues — ensure latest.'},
+};
+
+async function deepScan(owner,repo,setSt,setPr){
+  const F=[],P=[],FF={};
+  const base=`https://api.github.com/repos/${owner}/${repo}`;
+  let scanned=0,defBranch='main';
+
+  setSt('Fetching repo metadata…');setPr(5);
+  const info=await gf(base);
+  defBranch=info.default_branch||'main';
+
+  setSt('Mapping file tree…');setPr(10);
+  let root=[];
+  try{root=await gf(`${base}/contents/`);}catch(e){}
+  const fnames=root.map(f=>f.name.toLowerCase());
+
+  if(GH_TOKEN){
+    setSt('Checking branch protection…');setPr(14);
+    try{
+      const bp=await gf(`${base}/branches/${defBranch}/protection`);
+      bp.required_pull_request_reviews?P.push({t:'PR reviews required on '+defBranch,d:'Branch protection enforces code review.'}):F.push({l:'WARN',t:'No PR review required on '+defBranch,d:'Direct pushes to default branch allowed without review.'});
+      bp.required_status_checks?P.push({t:'Required status checks active',d:'CI must pass before merging.'}):F.push({l:'INFO',t:'No required status checks',d:'CI checks not required before merging.'});
+    }catch(e){if(e.message==='404')F.push({l:'INFO',t:'No branch protection on '+defBranch,d:'Anyone with write access can push directly.'});}
+  }
+
+  setSt('Checking security & config files…');setPr(18);
+  fnames.includes('security.md')?P.push({t:'SECURITY.md present',d:'Vulnerability disclosure policy defined.'}):F.push({l:'INFO',t:'No SECURITY.md',d:'Add SECURITY.md to define your vulnerability disclosure process.'});
+  ['license','license.md','license.txt','licence'].some(n=>fnames.includes(n))?P.push({t:'LICENSE present',d:'Usage rights are clearly defined.'}):F.push({l:'INFO',t:'No LICENSE file',d:'No license found — unclear usage rights.'});
+  fnames.includes('.env.example')||fnames.includes('.env.sample')?P.push({t:'.env.example present',d:'Environment variable template present.'}):F.push({l:'INFO',t:'No .env.example',d:'Without a template, devs may commit real .env files.'});
+
+  setSt('Checking for committed secret files…');setPr(22);
+  ['.env','.env.local','.env.production','.env.development','secrets.json','credentials.json','.htpasswd','id_rsa','id_ed25519'].forEach(df=>{
+    if(fnames.includes(df))F.push({l:'CRITICAL',t:df+' committed to repo!',d:'This file likely contains secrets. Remove immediately and rotate all credentials.'});
+  });
+
+  setSt('Auditing .gitignore…');setPr(26);
+  if(fnames.includes('.gitignore')){
+    try{
+      const raw=await gfRaw(`${base}/contents/.gitignore`)||'';
+      const gi=raw.toLowerCase();
+      gi.includes('.env')?P.push({t:'.env in .gitignore',d:'Environment files are gitignored.'}):F.push({l:'WARN',t:'.env not in .gitignore',d:'.env missing from .gitignore — secrets could be committed.'});
+      if(fnames.includes('package.json'))gi.includes('node_modules')?P.push({t:'node_modules gitignored',d:'Dependencies not committed.'}):F.push({l:'WARN',t:'node_modules not gitignored',d:'node_modules not in .gitignore.'});
+      gi.includes('.pem')||gi.includes('*.key')?P.push({t:'Key files in .gitignore',d:'Private key files are ignored.'}):F.push({l:'INFO',t:'No *.pem/*.key in .gitignore',d:'Add *.pem, *.key to .gitignore.'});
+    }catch(e){}
+  }else{F.push({l:'WARN',t:'No .gitignore found',d:'Sensitive files could be accidentally committed.'});}
+
+  setSt('Auditing dependencies…');setPr(33);
+  if(fnames.includes('package.json')){
+    try{
+      const raw=await gfRaw(`${base}/contents/package.json`)||'{}';
+      const pkg=JSON.parse(raw);
+      const allDeps=Object.assign({},pkg.dependencies,pkg.devDependencies,pkg.peerDependencies);
+      const depCount=Object.keys(allDeps).length;
+      for(const dep in allDeps){if(RISKY_DEPS[dep]){const rd=RISKY_DEPS[dep];F.push({l:rd.l,t:'Risky dep: '+dep+' ('+allDeps[dep]+')',d:rd.d});}}
+      fnames.includes('package-lock.json')||fnames.includes('yarn.lock')||fnames.includes('pnpm-lock.yaml')?P.push({t:'Lockfile present',d:'Dependency versions are pinned.'}):F.push({l:'WARN',t:'No lockfile found',d:'Unpinned deps may resolve to vulnerable versions.'});
+      depCount>80?F.push({l:'WARN',t:'Very large dep tree ('+depCount+')',d:depCount+' dependencies.'}):depCount>40?F.push({l:'INFO',t:'Large dep tree ('+depCount+')',d:'Run npm audit regularly.'}):P.push({t:'Lean dep tree ('+depCount+')',d:'Smaller attack surface.'});
+      if(pkg.scripts){const sc=JSON.stringify(pkg.scripts).toLowerCase();if(sc.includes('curl')||sc.includes('wget'))F.push({l:'CRITICAL',t:'curl/wget in npm scripts',d:'Downloading scripts in install hooks is a supply chain attack vector.'});if(sc.includes('bash ')||sc.includes('sh '))F.push({l:'WARN',t:'Shell scripts in npm scripts',d:'Bash execution in package scripts.'});}
+      pkg.engines?P.push({t:'Node.js version pinned',d:'engines.node field defined.'}):F.push({l:'INFO',t:'No engines field',d:'Specify engines.node in package.json.'});
+    }catch(e){F.push({l:'INFO',t:'Could not parse package.json',d:'Manually review dependencies.'});}
+  }
+
+  if(fnames.includes('requirements.txt')){
+    setSt('Auditing Python deps…');setPr(38);
+    try{
+      const raw=await gfRaw(`${base}/contents/requirements.txt`)||'';
+      const lines=raw.split('\n').filter(l=>l.trim()&&!l.startsWith('#'));
+      const pinned=lines.filter(l=>/[=<>!~]/.test(l)).length;
+      pinned===lines.length?P.push({t:'All Python deps pinned',d:'requirements.txt has version constraints.'}):F.push({l:'WARN',t:(lines.length-pinned)+' unpinned Python deps',d:'Unpinned deps may resolve to vulnerable versions.'});
+    }catch(e){}
+  }
+
+  if(fnames.includes('dockerfile')||fnames.includes('Dockerfile')){
+    setSt('Auditing Dockerfile…');setPr(42);
+    try{
+      const raw=await gfRaw(`${base}/contents/Dockerfile`)||await gfRaw(`${base}/contents/dockerfile`)||'';
+      !raw.toLowerCase().includes(':latest')?P.push({t:'Docker image version pinned',d:'No :latest tag.'}):F.push({l:'WARN',t:'Docker :latest used',d:'FROM image:latest is unpinned.'});
+      raw.toLowerCase().includes('user ')?P.push({t:'Non-root Docker USER set',d:'Container follows least privilege.'}):F.push({l:'WARN',t:'No USER in Dockerfile',d:'Container runs as root by default.'});
+    }catch(e){}
+  }
+
+  setSt('Checking CI/CD…');setPr(48);
+  try{
+    const wfs=await gf(`${base}/contents/.github/workflows`);
+    wfs.some(w=>w.name.toLowerCase().match(/security|codeql|audit|snyk|trivy/))?P.push({t:'Security scan in CI',d:'Automated security scanning configured.'}):F.push({l:'INFO',t:'No security CI workflow',d:'Add CodeQL, Snyk, or npm audit to CI.'});
+    wfs.some(w=>w.name.toLowerCase().match(/dependabot|renovate|deps/))?P.push({t:'Dependency bot detected',d:'Automated dep updates configured.'}):F.push({l:'INFO',t:'No Dependabot/Renovate',d:'Enable for automatic vulnerable dep updates.'});
+    P.push({t:wfs.length+' workflow(s) configured',d:'GitHub Actions CI/CD set up.'});
+    for(const wf of wfs.slice(0,6)){
+      try{
+        const wfRaw=await gfRaw(`${base}/contents/.github/workflows/${wf.name}`)||'';
+        const issues=[];
+        if(/github_token\s*:\s*['"][a-zA-Z0-9_]{20,}['"]/.test(wfRaw))issues.push({l:'CRITICAL',t:'Hardcoded token in workflow',d:'Use ${{ secrets.GITHUB_TOKEN }} instead.'});
+        if(/pull_request_target/.test(wfRaw)&&/checkout/.test(wfRaw))issues.push({l:'WARN',t:'pull_request_target + checkout — pwn-request risk',d:'Known attack vector. Verify this is intentional.'});
+        if(issues.length)FF['.github/workflows/'+wf.name]=(FF['.github/workflows/'+wf.name]||[]).concat(issues);
+      }catch(e){}
+    }
+  }catch(e){F.push({l:'INFO',t:'No GitHub Actions workflows',d:'No CI/CD found.'});}
+
+  setSt('Deep scanning source files…');setPr(55);
+  const EXT=['.js','.ts','.jsx','.tsx','.py','.go','.rs','.sol','.rb','.php','.java','.cs','.swift','.kt','.vue','.svelte'];
+  const srcFiles=root.filter(f=>EXT.some(e=>f.name.endsWith(e)));
+
+  for(let i=0;i<Math.min(srcFiles.length,18);i++){
+    const fn=srcFiles[i].name;
+    setSt('Scanning '+fn+'…');setPr(55+Math.floor(i/18*28));
+    try{
+      const raw=await gfRaw(`${base}/contents/${fn}`)||'';
+      const fileFindings=[];
+      for(const sp of SECRET_PATS){
+        const rr=new RegExp(sp.r.source,sp.r.flags);rr.lastIndex=0;
+        if(rr.test(raw)){
+          const lines=raw.split('\n');const ml=[];
+          lines.forEach((line,idx)=>{const tr=new RegExp(sp.r.source,sp.r.flags);tr.lastIndex=0;if(tr.test(line))ml.push({n:idx+1,c:line.trim().slice(0,90)});});
+          if(ml.length)fileFindings.push({l:sp.l,t:sp.t,d:'Found in '+fn+' on line(s) '+ml.map(m=>m.n).join(', ')+'. Rotate credentials immediately.',lines:ml.slice(0,3)});
+        }
+      }
+      for(const cv of CODE_VULNS){
+        const rr=new RegExp(cv.r.source,cv.r.flags);rr.lastIndex=0;
+        if(rr.test(raw)){
+          const lines=raw.split('\n');const ml=[];
+          lines.forEach((line,idx)=>{const tr=new RegExp(cv.r.source,cv.r.flags);tr.lastIndex=0;if(tr.test(line))ml.push({n:idx+1,c:line.trim().slice(0,90)});});
+          if(ml.length)fileFindings.push({l:cv.l,t:cv.t,d:cv.d,lines:ml.slice(0,2)});
+        }
+      }
+      if(fn.endsWith('.sol')){
+        if(/tx\.origin/.test(raw))fileFindings.push({l:'CRITICAL',t:'tx.origin used for auth',d:'Use msg.sender — tx.origin vulnerable to phishing.'});
+        if(/delegatecall/.test(raw))fileFindings.push({l:'WARN',t:'delegatecall usage',d:'Ensure target is always trusted.'});
+        if(/selfdestruct|suicide/.test(raw))fileFindings.push({l:'WARN',t:'selfdestruct in contract',d:'Can destroy contract funds.'});
+        if(!/ReentrancyGuard|nonReentrant/.test(raw)&&/\.call\{/.test(raw))fileFindings.push({l:'WARN',t:'External call without reentrancy guard',d:'Reentrancy attacks are a common exploit vector.'});
+        /ReentrancyGuard|nonReentrant/.test(raw)?P.push({t:'Reentrancy guard in '+fn,d:'Reentrancy protection implemented.'}):null;
+      }
+      if(fn.endsWith('.php')){
+        if(/\$_(?:GET|POST|REQUEST|COOKIE)\s*\[/.test(raw)&&/(?:echo|print|system|exec|shell_exec|passthru)/.test(raw))fileFindings.push({l:'CRITICAL',t:'Unvalidated user input (PHP)',d:'$_GET/$_POST passed to output/execution — XSS or RCE risk.'});
+        if(/mysql_query|mysql_connect/.test(raw))fileFindings.push({l:'CRITICAL',t:'Deprecated mysql_* functions',d:'Use PDO or MySQLi with prepared statements.'});
+      }
+      scanned++;
+      if(fileFindings.length>0)FF[fn]=fileFindings;
+    }catch(e){}
+  }
+
+  setSt('Checking repo health…');setPr(86);
+  const monthsAgo=(Date.now()-new Date(info.pushed_at).getTime())/(1e3*60*60*24*30);
+  monthsAgo>18?F.push({l:'WARN',t:'Inactive '+Math.floor(monthsAgo)+' months',d:'Unmaintained repos accumulate unpatched vulnerabilities.'}):monthsAgo>6?F.push({l:'INFO',t:'Last commit '+Math.floor(monthsAgo)+' months ago',d:'Activity slowed — check for unresolved security issues.'}):P.push({t:'Recently active',d:'Updated on '+new Date(info.pushed_at).toLocaleDateString()+'.'});
+  info.open_issues_count>500?F.push({l:'WARN',t:info.open_issues_count.toLocaleString()+' open issues',d:'Security reports may be going unaddressed.'}):info.open_issues_count>100?F.push({l:'INFO',t:info.open_issues_count.toLocaleString()+' open issues',d:'Consider triaging for security reports.'}):null;
+  info.description?null:F.push({l:'INFO',t:'No repo description',d:'Adding a description clarifies scope.'});
+  info.fork?F.push({l:'INFO',t:'Repository is a fork',d:'Check upstream for unmerged security patches.'}):null;
+  info.archived?F.push({l:'WARN',t:'Repository is archived',d:'Archived repos get no security updates.'}):null;
+
+  setSt('Checking test coverage…');setPr(96);
+  root.some(f=>['test','tests','__tests__','spec','specs'].includes(f.name.toLowerCase()))||root.some(f=>['.test.','.spec.'].some(p=>f.name.toLowerCase().includes(p)))?P.push({t:'Test files found',d:'Automated tests are present.'}):F.push({l:'INFO',t:'No test files found',d:'Untested code is harder to security audit.'});
+
+  setPr(100);setSt('');
+  const crits=F.filter(f=>f.l==='CRITICAL').length,warns=F.filter(f=>f.l==='WARN').length;
+  const score=crits>=1?'DANGER':warns>=1?'WARNING':'SAFE';
+  return{score,F,P,FF,info,scanned,defBranch};
+}
+
+async function runAudit(){
+  const input=document.getElementById('repoInput').value.trim();
+  if(!input){alert('Please paste a GitHub repo URL first!');return;}
+  if(!input.includes('github.com')){alert('Please enter a valid GitHub URL.');return;}
+  const{owner,repo}=parseURL(input);
+  const btn=document.getElementById('auditBtn'),rb=document.getElementById('rbox'),rc=document.getElementById('rcont'),ru=document.getElementById('rurl'),rm=document.getElementById('rmeta'),sp=document.getElementById('spill'),pf=document.getElementById('pfill'),sl=document.getElementById('sline');
+  btn.disabled=true;btn.textContent='SCANNING…';
+  rb.classList.add('vis');ru.textContent=input;
+  sp.textContent='';sp.className='spill';rm.innerHTML='';
+  rc.innerHTML='<div style="padding:.8rem 0;color:var(--muted);font-size:12px"><span class="ldots">Initializing deep scan</span></div>';
+  pf.style.width='0%';sl.textContent='';
+  const setSt=t=>sl.textContent=t,setPr=p=>pf.style.width=p+'%';
+  try{
+    const{score,F,P,FF,info,scanned,defBranch}=await deepScan(owner,repo,setSt,setPr);
+    const cm={SAFE:'ss',WARNING:'sw',DANGER:'sd'};
+    sp.textContent=score;sp.className='spill '+(cm[score]||'sw');
+    rm.innerHTML='<div class="mt">⭐ '+info.stargazers_count.toLocaleString()+'</div><div class="mt">🔱 '+info.forks_count.toLocaleString()+'</div><div class="mt">🔤 '+(info.language||'—')+'</div><div class="mt">📁 '+scanned+' files</div><div class="mt">🌿 '+defBranch+'</div>'+(info.private?'<div class="mt" style="color:var(--teal)">🔒 Private</div>':'<div class="mt">🌐 Public</div>')+'<div class="mt">🕒 '+new Date(info.pushed_at).toLocaleDateString()+'</div>';
+    const crits=F.filter(f=>f.l==='CRITICAL').length,warns=F.filter(f=>f.l==='WARN').length,infos=F.filter(f=>f.l==='INFO').length,fileFx=Object.values(FF).reduce((a,b)=>a+b.length,0);
+    let h='';
+    h+='<div class="sgrid"><div class="sblock"><div class="snum nc">'+crits+'</div><div class="slim">Critical</div></div><div class="sblock"><div class="snum nw">'+warns+'</div><div class="slim">Warnings</div></div><div class="sblock"><div class="snum ni">'+infos+'</div><div class="slim">Info</div></div><div class="sblock"><div class="snum np">'+P.length+'</div><div class="slim">Passed</div></div></div>';
+    if(Object.keys(FF).length>0){
+      h+='<div class="shdr"><span class="sttl">📄 File-Level Issues</span><div class="badges"><span class="bdg bt">'+fileFx+' issues across '+Object.keys(FF).length+' files</span></div></div>';
+      for(const[fn,fx] of Object.entries(FF)){
+        const id='f_'+fn.replace(/[^a-z0-9]/gi,'_');
+        const fc=fx.filter(x=>x.l==='CRITICAL').length,fw=fx.filter(x=>x.l==='WARN').length;
+        h+='<div class="facc"><div class="fhdr" onclick="togFile(\''+id+'\')"><span class="fname">📄 '+escH(fn)+'</span>';
+        if(fc)h+='<span class="bdg bc">'+fc+' crit</span>';
+        if(fw)h+='<span class="bdg bw">'+fw+' warn</span>';
+        h+='<span class="ftog" id="t_'+id+'">▶</span></div><div class="fbody" id="'+id+'">';
+        fx.forEach(x=>{
+          const dc=x.l==='CRITICAL'?'dc':x.l==='WARN'?'dw':'di',lc=x.l==='CRITICAL'?'lc':x.l==='WARN'?'lw':'li';
+          h+='<div class="finding"><div class="fdot '+dc+'"></div><div style="flex:1;min-width:0"><div class="ftitle">'+escH(x.t)+'<span class="flvl '+lc+'">'+x.l+'</span></div><div class="fdesc">'+escH(x.d)+'</div>';
+          if(x.lines&&x.lines.length){h+='<div class="csnip">';x.lines.forEach(l=>{h+='<span class="cline">L'+l.n+'</span>'+escH(l.c)+'\n';});h+='</div>';}
+          h+='</div></div>';
+        });
+        h+='</div></div>';
+      }
+    }
+    if(F.length>0){
+      h+='<div class="shdr"><span class="sttl">🔍 Repo-Level Findings</span><div class="badges">';
+      if(crits)h+='<span class="bdg bc">'+crits+' CRITICAL</span>';
+      if(warns)h+='<span class="bdg bw">'+warns+' WARN</span>';
+      if(infos)h+='<span class="bdg bi">'+infos+' INFO</span>';
+      h+='</div></div>';
+      ['CRITICAL','WARN','INFO'].reduce((arr,lvl)=>arr.concat(F.filter(f=>f.l===lvl)),[]).forEach(x=>{
+        const dc=x.l==='CRITICAL'?'dc':x.l==='WARN'?'dw':'di',lc=x.l==='CRITICAL'?'lc':x.l==='WARN'?'lw':'li';
+        h+='<div class="finding"><div class="fdot '+dc+'"></div><div><div class="ftitle">'+escH(x.t)+'<span class="flvl '+lc+'">'+x.l+'</span></div><div class="fdesc">'+escH(x.d)+'</div></div></div>';
+      });
+    }
+    if(P.length>0){
+      h+='<div class="shdr"><span class="sttl">✅ Passed Checks</span><span class="bdg bp">'+P.length+' passed</span></div>';
+      P.forEach(x=>{h+='<div class="finding"><div class="fdot dp2"></div><div><div class="ftitle">'+escH(x.t)+'</div><div class="fdesc">'+escH(x.d)+'</div></div></div>';});
+    }
+    const sm=score==='SAFE'?'✅ <strong>'+escH(repo)+'</strong> passed with no critical issues. '+P.length+' checks passed. Maintain good practices and re-audit periodically.':score==='WARNING'?'⚠️ <strong>'+escH(repo)+'</strong> has '+warns+' warning(s) and '+infos+' info finding(s). '+P.length+' checks passed. Address warnings before production.':'🔴 <strong>'+escH(repo)+'</strong> has '+crits+' critical vulnerability(s). '+P.length+' checks passed. Halt deployment and fix immediately.';
+    h+='<div class="summary">'+sm+'</div>';
+    rc.innerHTML=h;
+  }catch(err){
+    pf.style.width='0%';sl.textContent='';sp.textContent='ERROR';sp.className='spill se';
+    let em='';
+    if(err.message==='404')em='❌ Repository not found. Make sure the repo is public and the URL is correct.';
+    else if(err.message==='401')em='❌ Invalid or expired GitHub token.';
+    else if(err.message==='RATE_LIMIT')em='⚠️ GitHub API rate limit reached (60/hr). Wait a few minutes and try again.';
+    else if(err.message==='403')em='⚠️ Access forbidden.';
+    else em='❌ Scan failed: '+escH(err.message)+'<br><br>Make sure the repo is public and try again.';
+    rc.innerHTML='<div class="summary" style="color:var(--red)">'+em+'</div>';
+  }
+  btn.disabled=false;btn.textContent='SCAN';
+}
+
+function togFile(id){const e=document.getElementById(id),t=document.getElementById('t_'+id);const o=e.classList.toggle('op');t.classList.toggle('op',o);}
+document.getElementById('repoInput').addEventListener('keydown',e=>{if(e.key==='Enter')runAudit();});
+</script>
+</body>
+</html>
